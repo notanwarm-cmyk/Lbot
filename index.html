@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>أدخل بوت إلى سيرفر ماينكرافت</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dirt: #4a3322;
+    --panel: #c6c6c6;
+    --ink: #373737;
+    --slot: #1a1a1a;
+    --ok: #55ff55;
+    --warn: #ffaa00;
+    --err: #ff5555;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+    color: var(--ink);
+    background-color: var(--dirt);
+    background-image:
+      linear-gradient(45deg, rgba(0,0,0,.16) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.16) 75%),
+      linear-gradient(45deg, rgba(255,255,255,.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.04) 75%);
+    background-size: 32px 32px;
+    background-position: 0 0, 16px 16px;
+    padding: max(20px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: center;
+  }
+  main {
+    width: 100%;
+    max-width: 560px;
+    margin: auto 0;
+    background: var(--panel);
+    padding: 22px 20px 20px;
+    box-shadow: inset 4px 4px 0 #fff, inset -4px -4px 0 #555, 0 0 0 4px #000, 0 10px 0 4px rgba(0,0,0,.35);
+  }
+  h1 {
+    font-family: "Reem Kufi", "IBM Plex Sans Arabic", sans-serif;
+    font-weight: 600;
+    font-size: clamp(26px, 7vw, 36px);
+    line-height: 1.2;
+    margin: 0 0 6px;
+    text-shadow: 2px 2px 0 #eee;
+  }
+  .lead { margin: 0 0 18px; font-size: 15px; line-height: 1.7; color: #4a4a4a; }
+
+  label { display: block; font-weight: 600; font-size: 15px; margin: 14px 0 6px; }
+  .hint { font-weight: 400; font-size: 13px; color: #555; }
+  input[type=text], input[type=url] {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: #fff;
+    background: var(--slot);
+    border: 0;
+    padding: 12px 12px;
+    box-shadow: inset 0 0 0 2px #8b8b8b;
+    outline: none;
+    border-radius: 0;
+  }
+  input:focus-visible { box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px #3b6fd4; }
+  input::placeholder { color: #7d7d7d; }
+  input:disabled { opacity: .6; }
+  .ltr { direction: ltr; text-align: left; }
+
+  .btns { display: flex; gap: 12px; margin-top: 18px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    font-size: 17px;
+    color: #fff;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.45);
+    border: 0;
+    border-radius: 0;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #6f6f6f;
+    box-shadow: inset 3px 3px 0 #a8a8a8, inset -3px -3px 0 #3c3c3c, 0 0 0 2px #000;
+  }
+  button:hover:not(:disabled) { background: #7e86a8; }
+  button:focus-visible { outline: 3px solid #3b6fd4; outline-offset: 3px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .go { flex: 2; background: #4d8a2b; box-shadow: inset 3px 3px 0 #8fd460, inset -3px -3px 0 #2b4f15, 0 0 0 2px #000; }
+  .go:hover:not(:disabled) { background: #5aa133; }
+  .stop { flex: 1; background: #9a3b2e; box-shadow: inset 3px 3px 0 #e0806f, inset -3px -3px 0 #5a1f17, 0 0 0 2px #000; }
+  .stop:hover:not(:disabled) { background: #b24636; }
+
+  .status {
+    display: flex; align-items: center; gap: 10px;
+    margin: 20px 0 8px; font-weight: 600; font-size: 15px;
+  }
+  .pip { width: 14px; height: 14px; background: #777; box-shadow: 0 0 0 2px #000; flex: none; }
+  .pip.connecting { background: #e8b339; animation: blink 1s steps(2) infinite; }
+  .pip.online { background: #55c52e; }
+  @keyframes blink { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .pip.connecting { animation: none; } }
+
+  #console {
+    height: 230px;
+    overflow-y: auto;
+    background: #000;
+    color: #ddd;
+    font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    padding: 10px 12px;
+    box-shadow: 0 0 0 2px #8b8b8b;
+  }
+  #console div { unicode-bidi: plaintext; text-align: start; word-break: break-word; }
+  .l-ok { color: var(--ok); } .l-warn { color: var(--warn); } .l-err { color: var(--err); }
+  .l-chat { color: #fff; } .l-info { color: #aaa; } .l-me { color: #55ffff; }
+  .empty { color: #777; }
+
+  #chatForm { display: flex; gap: 10px; margin-top: 10px; }
+  #chatForm input { flex: 1; }
+  #chatForm button { font-size: 15px; padding: 10px 14px; }
+
+  details { margin-top: 18px; font-size: 14px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details input { margin-top: 8px; }
+  .foot { margin: 18px 0 0; font-size: 13px; line-height: 1.7; color: #555; }
+</style>
+</head>
+<body>
+<main>
+  <h1>أدخل بوت إلى سيرفرك</h1>
+  <p class="lead">اكتب عنوان السيرفر واختر اسماً للبوت، وسيدخل السيرفر مباشرة. يعمل مع السيرفرات غير الأصلية (Cracked) فقط.</p>
+
+  <label for="server">عنوان السيرفر (IP)</label>
+  <input id="server" class="ltr" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="play.example.com أو 123.45.67.89:25565">
+
+  <label for="name">اسم البوت <span class="hint">(حروف إنجليزية وأرقام و _ فقط، من 3 إلى 16)</span></label>
+  <input id="name" class="ltr" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16" placeholder="اتركه فارغاً لاسم عشوائي">
+
+  <div class="btns">
+    <button id="join" class="go" type="button">دخول السيرفر</button>
+    <button id="leave" class="stop" type="button" disabled>إخراج البوت</button>
+  </div>
+
+  <div class="status"><span id="pip" class="pip"></span><span id="statusText">غير متصل</span></div>
+  <div id="console" aria-live="polite"><div class="empty">سجل البوت سيظهر هنا.</div></div>
+
+  <form id="chatForm" hidden>
+    <input id="chatText" type="text" maxlength="200" autocomplete="off" placeholder="اكتب رسالة ليرسلها البوت في الشات">
+    <button type="submit">إرسال</button>
+  </form>
+
+  <details id="cfg" hidden>
+    <summary>إعدادات الخادم الخلفي</summary>
+    <input id="backend" class="ltr" type="url" placeholder="wss://your-app.onrender.com">
+  </details>
+
+  <p class="foot">البوت يخرج تلقائياً بعد بضع ساعات. استخدمه فقط على سيرفر تملكه أو لديك إذن من صاحبه.</p>
+</main>
+
+<script>
+// اتركه فارغاً إذا كان server.js هو الذي يعرض هذه الصفحة (الطريقة الأسهل).
+// ضع عنواناً فقط إذا رفعت الصفحة في مكان آخر، مثال: 'wss://my-mcbot.onrender.com'
+const BACKEND_URL = '';
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  server: $('server'), name: $('name'), join: $('join'), leave: $('leave'),
+  pip: $('pip'), statusText: $('statusText'), con: $('console'),
+  chatForm: $('chatForm'), chatText: $('chatText'), cfg: $('cfg'), backend: $('backend')
+};
+
+let ws = null;
+let wanted = false;
+let retryTimer = null;
+let session = store('mcbot_session');
+let state = 'offline';
+
+function store(k, v) {
+  try {
+    if (v === undefined) return localStorage.getItem(k);
+    if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+  } catch (e) { return null; }
+}
+
+function backendUrl() {
+  let u = (store('mcbot_backend') || BACKEND_URL).trim();
+  if (!u && /^https?:/.test(location.origin)) u = location.origin;
+  return u.replace(/^http/i, 'ws');
+}
+const needsBackend = () => !backendUrl();
+
+if (needsBackend()) {
+  els.cfg.hidden = false;
+  els.cfg.open = true;
+}
+els.backend.value = store('mcbot_backend') || '';
+els.backend.addEventListener('change', () => {
+  store('mcbot_backend', els.backend.value.trim() || null);
+});
+
+function addLog(text, level) {
+  const first = els.con.firstElementChild;
+  if (first && first.classList.contains('empty')) els.con.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'l-' + (level || 'info');
+  d.textContent = text;
+  els.con.appendChild(d);
+  while (els.con.children.length > 300) els.con.removeChild(els.con.firstChild);
+  els.con.scrollTop = els.con.scrollHeight;
+}
+
+function render(label) {
+  els.pip.className = 'pip ' + (state === 'offline' ? '' : state);
+  els.statusText.textContent = label || ({
+    offline: 'غير متصل',
+    connecting: 'جارٍ الدخول...',
+    online: 'البوت داخل السيرفر'
+  })[state];
+  const busy = state !== 'offline';
+  els.join.disabled = busy;
+  els.leave.disabled = !busy;
+  els.server.disabled = busy;
+  els.name.disabled = busy;
+  els.chatForm.hidden = state !== 'online';
+}
+
+function send(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
+
+function openSocket(onOpen) {
+  if (needsBackend()) {
+    addLog('حدد عنوان الخادم الخلفي في الإعدادات أولاً.', 'err');
+    els.cfg.hidden = false;
+    els.cfg.open = true;
+    wanted = false;
+    state = 'offline';
+    render();
+    return;
+  }
+  try { ws = new WebSocket(backendUrl()); }
+  catch (e) { addLog('عنوان الخادم الخلفي غير صحيح.', 'err'); wanted = false; state = 'offline'; render(); return; }
+
+  ws.onopen = () => {
+    clearTimeout(retryTimer);
+    if (session) send({ type: 'resume', session });
+    if (onOpen) onOpen();
+  };
+  ws.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch (err) {} };
+  ws.onclose = () => {
+    ws = null;
+    if (wanted) {
+      render('انقطع الاتصال بالموقع، جارٍ إعادة المحاولة...');
+      retryTimer = setTimeout(() => openSocket(), 3000);
+    }
+  };
+  ws.onerror = () => {};
+}
+
+function handle(m) {
+  if (m.type === 'log') {
+    addLog(m.text, m.level);
+  } else if (m.type === 'error') {
+    addLog(m.text, 'err');
+    if (state === 'connecting' && !session) { state = 'offline'; wanted = false; render(); }
+  } else if (m.type === 'status') {
+    state = m.state;
+    if (state === 'offline') {
+      session = null; store('mcbot_session', null); wanted = false;
+      render();
+      if (ws) ws.close();
+    } else {
+      session = m.session; store('mcbot_session', session); wanted = true;
+      render(state === 'online' ? 'البوت «' + m.name + '» داخل السيرفر' : 'جارٍ الدخول بالاسم ' + m.name + '...');
+    }
+  }
+}
+
+els.join.addEventListener('click', () => {
+  const server = els.server.value.trim();
+  let name = els.name.value.trim();
+  if (!server) { addLog('اكتب عنوان السيرفر أولاً.', 'err'); els.server.focus(); return; }
+  if (name && !/^[A-Za-z0-9_]{3,16}$/.test(name)) {
+    addLog('اسم البوت يجب أن يكون من 3 إلى 16 حرفاً إنجليزياً أو رقماً أو _ .', 'err');
+    els.name.focus(); return;
+  }
+  session = null; store('mcbot_session', null);
+  els.con.innerHTML = '';
+  state = 'connecting'; wanted = true; render();
+  const go = () => send({ type: 'start', host: server, name });
+  if (ws && ws.readyState === 1) go(); else openSocket(go);
+});
+
+els.leave.addEventListener('click', () => {
+  send({ type: 'stop' });
+});
+
+els.chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = els.chatText.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  addLog('> ' + text, 'me');
+  els.chatText.value = '';
+});
+
+render();
+if (session) { wanted = true; state = 'connecting'; render('جارٍ استرجاع البوت...'); openSocket(); }
+</script>
+</body>
+</html>
